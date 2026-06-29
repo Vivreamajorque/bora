@@ -9,29 +9,27 @@ export function useBora(apiKey) {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey
+        },
         body: JSON.stringify({
-          apiKey,
           model: 'claude-sonnet-4-6',
           max_tokens: 1024,
           system: BORA_SYSTEM_PROMPT,
-          messages: messages.map(m => ({
-            role: m.role,
-            content: m.content
-          }))
+          messages: messages.map(m => ({ role: m.role, content: m.content }))
         })
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error?.message || `Erreur ${response.status}`)
+        throw new Error(data?.error?.message || `Erreur ${response.status}`)
       }
 
       const text = data.content?.[0]?.text || ''
       onChunk(text)
       return text
-
     } finally {
       setLoading(false)
     }
