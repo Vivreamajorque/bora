@@ -7,13 +7,11 @@ export function useBora(apiKey) {
   const send = useCallback(async (messages, onChunk) => {
     setLoading(true)
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
+          'x-api-key': apiKey
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
