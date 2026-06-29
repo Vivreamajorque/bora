@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-api-key')
@@ -7,12 +6,19 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const apiKey = req.headers['x-api-key']
-  if (!apiKey || !apiKey.startsWith('sk-ant-')) {
-    return res.status(401).json({ error: { message: 'Clé API invalide' } })
+  // Get key from header or body
+  const apiKey = req.headers['x-api-key'] || req.body?.apiKey
+  
+  if (!apiKey) {
+    return res.status(401).json({ error: { message: 'Clé API manquante' } })
   }
 
   try {
+    // Non-streaming call for reliability
+    const body = { ...req.body }
+    delete body.apiKey
+    body.stream = false
+
     const upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -20,21 +26,13 @@ export default async function handler(req, res) {
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01'
       },
-      body: JSON.stringify(req.body)
+      body: JSON.stringify(body)
     })
 
-    // Stream the response
-    res.setHeader('Content-Type', upstream.headers.get('content-type') || 'application/json')
-    res.status(upstream.status)
+    const data = await upstream.json()
+    return res.status(upstream.status).json(data)
 
-    const reader = upstream.body.getReader()
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      res.write(value)
-    }
-    res.end()
   } catch (err) {
-    res.status(500).json({ error: { message: err.message } })
+    return res.status(500).json({ error: { message: err.message } })
   }
 }
